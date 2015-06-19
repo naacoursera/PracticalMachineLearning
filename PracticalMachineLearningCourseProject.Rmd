@@ -1,0 +1,104 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Nik. A. A."
+output: html_document
+---
+
+# Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+# Project Objective
+
+The objective of your project is to predict the manner in which the sample did the exercise. This is the "classe" variable in the training set. This report describes the model is built, cross validation, and the expected out of sample error. 20 different test cases is predicted using the built prediction model. 
+
+## Load Required Library
+```{r}
+library(caret)
+library(randomForest) 
+library(ggplot2)
+```
+
+## Set Seed Number and Load Data Set
+First ("NA","#DIV/0", "")  is set to NA then deleted.
+All missing values will be deleted. 
+
+```{r}
+set.seed(12345)
+
+trainData <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+
+# Loading the testing data set 
+testData <- read.csv('pml-testing.csv', na.strings=c("NA","#DIV/0!", ""))
+
+# Delete all missing values
+trainData<-trainData[ ,colSums(is.na(trainData)) == 0]
+testData <-testData[ ,colSums(is.na(testData)) == 0]
+````
+
+Irrelevant variables are deleted:
+1. user_name
+2. raw_timestamp_part_1
+3. raw_timestamp_part_2
+4. cvtd_timestamp
+5. new_window
+6. num_window
+
+```{r}
+trainData   <-trainData[,-c(1:7)]
+testData <-testData[,-c(1:7)]
+
+```
+
+## Building Model
+
+First training data is divided to subTrain and subTest.
+
+Them a model is creates using randomForest method.
+
+```{r}
+partSamples <- createDataPartition(y=trainData$classe, p=0.75, list=FALSE)
+subTrain <- trainData[partSamples, ] 
+subTest <- trainData[-partSamples, ]
+
+model <- randomForest(classe ~. , data=subTrain, method="class")
+```
+
+Model generated is tested using subTest.
+Confusion Matrix is generated to get the expected error.
+
+```{r}
+# Predicting:
+predictionSub <- predict(model, subTest, type = "class")
+
+# Confusion Matrix
+confusionMatrix(predictionSub, subTest$classe)
+`````
+Accuracy for Random Forest model was 0.9945 (95% CI: (0.992, 0.9964)).
+
+For accuracy above 99% on cross-validation data, onlu a few samplee will be missclassified.
+Therefore, random Forest model will be a good method for this case.
+
+The expected out-of-sample error is estimated at 0.0055. The expected out-of-sample error is calculated as 1 - accuracy for predictions made against the cross-validation set. 
+
+# Test Case Submission
+
+Finally, the test case is predict using the model created.
+```{r}
+prediction <- predict(model, testData, type="class")
+prediction
+
+
+# Function to submit to the Coursera Submission
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(prediction)
+
+```
